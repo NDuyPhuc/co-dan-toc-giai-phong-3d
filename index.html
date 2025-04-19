@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lá Cờ Mặt Trận Dân Tộc Giải Phóng Miền Nam Việt Nam</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #111827;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            perspective: 1000px;
+        }
+        
+        canvas {
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+            transform-style: preserve-3d;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 24px;
+            text-align: center;
+        }
+        
+        .fallback-svg {
+            display: none;
+            max-width: 90%;
+            max-height: 80vh;
+            margin: 0 auto;
+        }
+        
+        .title {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: #fff;
+            z-index: 10;
+            text-shadow: 0 0 10px rgba(255, 255, 0, 0.7);
+        }
+        
+        /* Thêm hiệu ứng glow cho canvas */
+        canvas {
+            filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
+        }
+        
+        /* Animation glowing text */
+        @keyframes glow {
+            0% { text-shadow: 0 0 10px rgba(255, 255, 0, 0.7); }
+            50% { text-shadow: 0 0 20px rgba(255, 255, 0, 0.9); }
+            100% { text-shadow: 0 0 10px rgba(255, 255, 0, 0.7); }
+        }
+        
+        .title h1 {
+            animation: glow 3s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="title">
+        <h1 class="text-2xl md:text-3xl lg:text-4xl font-bold">Lá Cờ Mặt Trận Dân Tộc Giải Phóng Miền Nam Việt Nam</h1>
+        <p class="text-lg md:text-xl text-yellow-200 mt-2">Cờ giải phóng, lá cờ màu xanh của hòa bình hòa vào màu đỏ của đất nước với khát khao hòa bình, khát vọng thống nhất đất nước. Lá cờ đại diện cho  Mặt trận Dân tộc Giải phóng miền Nam Việt Nam, là ngọn cờ đoàn kết, tô thắm truyền thống vẻ vang của dân tộc.</p>
+    </div>
+    
+    <div id="canvas-container">
+        <div class="loading">Đang triệu hồi phép thuật pixel...</div>
+        <svg class="fallback-svg" viewBox="0 0 900 600" preserveAspectRatio="xMidYMid meet">
+            <!-- SVG fallback sẽ được tạo bởi JavaScript khi cần -->
+        </svg>
+    </div>
+    
+    <script>
+        // Tạo một IIFE để tránh ô nhiễm global scope
+        (function() {
+            // Biến và hằng số
+            var container = document.getElementById('canvas-container');
+            var loading = document.querySelector('.loading');
+            var fallbackSvg = document.querySelector('.fallback-svg');
+            var canvas, ctx;
+            var flagWidth = 900;
+            var flagHeight = 600;
+            var pixelSize = 10; // Kích thước mỗi pixel
+            var numRows, numCols;
+            var pixels = []; // Mảng chứa thông tin về các pixel
+            var animationStartTime = null;
+            var introDuration = 3000; // 3 giây cho intro
+            var colorRed = '#da251d'; // Đỏ đậm
+            var colorBlue = '#0033FF';   // Xanh dương
+            var colorYellow = '#ffff00'; // Vàng thuần
+            var isCanvasSupported = false;
+            var isIntroCompleted = false;
+            var animationFrameId = null;
+            
+            // Tùy chỉnh kích thước pixel dựa trên kích thước màn hình
+            function adjustPixelSize() {
+                var width = window.innerWidth;
+                if (width < 480) {
+                    pixelSize = 4;
+                } else if (width < 768) {
+                    pixelSize = 6;
+                } else if (width < 1024) {
+                    pixelSize = 8;
+                } else {
+                    pixelSize = 10;
+                }
+                
+                // Tính toán lại số hàng và cột
+                numRows = Math.ceil(flagHeight / pixelSize);
+                numCols = Math.ceil(flagWidth / pixelSize);
+            }
+            
+            // Kiểm tra hỗ trợ Canvas
+            function checkCanvasSupport() {
+                var testCanvas = document.createElement('canvas');
+                isCanvasSupported = !!(testCanvas.getContext && testCanvas.getContext('2d'));
+                return isCanvasSupported;
+            }
+            
+            // Khởi tạo Canvas
+            function initCanvas() {
+                canvas = document.createElement('canvas');
+                ctx = canvas.getContext('2d');
+                
+                // Đặt kích thước canvas tương đối với container
+                var containerWidth = container.clientWidth;
+                var containerHeight = container.clientHeight;
+                
+                // Giữ tỷ lệ 3:2 của lá cờ
+                var canvasWidth, canvasHeight;
+                if (containerWidth / containerHeight > flagWidth / flagHeight) {
+                    canvasHeight = Math.min(containerHeight, flagHeight);
+                    canvasWidth = canvasHeight * (flagWidth / flagHeight);
+                } else {
+                    canvasWidth = Math.min(containerWidth, flagWidth);
+                    canvasHeight = canvasWidth * (flagHeight / flagWidth);
+                }
+                
+                // Đặt kích thước hiển thị của canvas
+                canvas.style.width = canvasWidth + 'px';
+                canvas.style.height = canvasHeight + 'px';
+                
+                // Đặt kích thước thực của canvas (độ phân giải)
+                canvas.width = flagWidth;
+                canvas.height = flagHeight;
+                
+                // Thêm canvas vào container
+                container.appendChild(canvas);
+                loading.style.display = 'none';
+            }
+            
+            // Tạo fallback SVG cho trình duyệt không hỗ trợ Canvas
+            function createFallbackSVG() {
+                // Tạo nửa đỏ
+                var redRect = createSVGElement('rect', {
+                    x: 0,
+                    y: 0,
+                    width: flagWidth,
+                    height: flagHeight / 2,
+                    fill: colorRed
+                });
+                fallbackSvg.appendChild(redRect);
+                
+                // Tạo nửa xanh
+                var blueRect = createSVGElement('rect', {
+                    x: 0,
+                    y: flagHeight / 2,
+                    width: flagWidth,
+                    height: flagHeight / 2,
+                    fill: colorBlue
+                });
+                fallbackSvg.appendChild(blueRect);
+                
+                // Tạo ngôi sao
+                var star = createStarPath();
+                var starPath = createSVGElement('path', {
+                    d: star,
+                    fill: colorYellow
+                });
+                fallbackSvg.appendChild(starPath);
+                
+                // Hiển thị SVG fallback
+                fallbackSvg.style.display = 'block';
+                loading.style.display = 'none';
+            }
+            
+            // Hàm hỗ trợ tạo phần tử SVG
+            function createSVGElement(name, attributes) {
+                var element = document.createElementNS('http://www.w3.org/2000/svg', name);
+                for (var key in attributes) {
+                    element.setAttribute(key, attributes[key]);
+                }
+                return element;
+            }
+            
+            // Tạo đường dẫn path cho ngôi sao 5 cánh
+            function createStarPath() {
+                var centerX = flagWidth / 2;
+                var centerY = flagHeight / 2;
+                var outerRadius = 0.3 * flagHeight;
+                var innerRadius = outerRadius * Math.sin(Math.PI / 10) / Math.sin(3 * Math.PI / 10);
+                var path = '';
+                
+                for (var i = 0; i < 10; i++) {
+                    var angle = -Math.PI / 2 + i * Math.PI / 5;
+                    var radius = i % 2 === 0 ? outerRadius : innerRadius;
+                    var x = centerX + radius * Math.cos(angle);
+                    var y = centerY + radius * Math.sin(angle);
+                    
+                    if (i === 0) {
+                        path += 'M' + x + ',' + y + ' ';
+                    } else {
+                        path += 'L' + x + ',' + y + ' ';
+                    }
+                }
+                
+                return path + 'Z'; // Đóng đường dẫn
+            }
+            
+            // Khởi tạo các pixel
+            function initPixels() {
+                // Vẽ lá cờ nền để lấy dữ liệu pixel
+                createBaseFlagImage();
+                
+                // Tạo mảng thông tin pixel
+                pixels = [];
+                
+                // Lấy dữ liệu pixel từ canvas
+                var imageData = ctx.getImageData(0, 0, flagWidth, flagHeight);
+                var data = imageData.data;
+                
+                // Tạo mảng thông tin pixel dựa trên màu sắc
+                for (var y = 0; y < flagHeight; y += pixelSize) {
+                    for (var x = 0; x < flagWidth; x += pixelSize) {
+                        var index = (y * flagWidth + x) * 4;
+                        
+                        // Màu sắc tại vị trí (x, y)
+                        var r = data[index];
+                        var g = data[index + 1];
+                        var b = data[index + 2];
+                        var a = data[index + 3];
+                        
+                        // Thêm vào nếu không trong suốt
+                        if (a > 0) {
+                            var color = 'rgba(' + r + ',' + g + ',' + b + ',' + a / 255 + ')';
+                            var depth = Math.random() * 0.3 + 0.7; // Độ sâu ngẫu nhiên giữa 0.7 và 1.0
+                            
+                            // Tạo vị trí bắt đầu ngẫu nhiên cho animation intro
+                            var startX, startY;
+                            
+                            // 4 hướng bay vào: trên, dưới, trái, phải
+                            var direction = Math.floor(Math.random() * 4);
+                            
+                            if (direction === 0) { // Từ trên
+                                startX = x + (Math.random() - 0.5) * flagWidth * 1.5;
+                                startY = -flagHeight * Math.random() - pixelSize;
+                            } else if (direction === 1) { // Từ dưới
+                                startX = x + (Math.random() - 0.5) * flagWidth * 1.5;
+                                startY = flagHeight + flagHeight * Math.random() + pixelSize;
+                            } else if (direction === 2) { // Từ trái
+                                startX = -flagWidth * Math.random() - pixelSize;
+                                startY = y + (Math.random() - 0.5) * flagHeight * 1.5;
+                            } else { // Từ phải
+                                startX = flagWidth + flagWidth * Math.random() + pixelSize;
+                                startY = y + (Math.random() - 0.5) * flagHeight * 1.5;
+                            }
+                            
+                            pixels.push({
+                                x: x,
+                                y: y,
+                                startX: startX,
+                                startY: startY,
+                                size: pixelSize - 1, // Để tạo khe giữa các pixel
+                                color: color,
+                                alpha: 1,
+                                delay: Math.random() * 2000, // Delay ngẫu nhiên trong 2 giây
+                                phase: Math.random() * Math.PI * 2, // Pha ngẫu nhiên cho shimmer
+                                depth: depth, // Độ sâu cho hiệu ứng parallax
+                                shimmerSpeed: Math.random() * 0.01 + 0.005 // Tốc độ shimmer ngẫu nhiên
+                            });
+                        }
+                    }
+                }
+                
+                // Xóa trắng canvas để bắt đầu animation
+                ctx.clearRect(0, 0, flagWidth, flagHeight);
+            }
+            
+            // Vẽ lá cờ cơ bản để lấy thông tin màu pixel
+            function createBaseFlagImage() {
+                // Vẽ nửa trên màu đỏ
+                ctx.fillStyle = colorRed;
+                ctx.fillRect(0, 0, flagWidth, flagHeight / 2);
+                
+                // Vẽ nửa dưới màu xanh
+                ctx.fillStyle = colorBlue;
+                ctx.fillRect(0, flagHeight / 2, flagWidth, flagHeight / 2);
+                
+                // Vẽ ngôi sao vàng 5 cánh
+                drawStar();
+            }
+            
+            // Vẽ ngôi sao 5 cánh
+            function drawStar() {
+                ctx.fillStyle = colorYellow;
+                
+                var centerX = flagWidth / 2;
+                var centerY = flagHeight / 2;
+                var outerRadius = 0.3 * flagHeight;
+                var innerRadius = outerRadius * Math.sin(Math.PI / 10) / Math.sin(3 * Math.PI / 10);
+                
+                ctx.beginPath();
+                for (var i = 0; i < 10; i++) {
+                    var angle = -Math.PI / 2 + i * Math.PI / 5;
+                    var radius = i % 2 === 0 ? outerRadius : innerRadius;
+                    var x = centerX + radius * Math.cos(angle);
+                    var y = centerY + radius * Math.sin(angle);
+                    
+                    if (i === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                }
+                ctx.closePath();
+                ctx.fill();
+            }
+            
+            // Hàm easing: smoothstep 
+            function smoothstep(min, max, value) {
+                var x = Math.max(0, Math.min(1, (value - min) / (max - min)));
+                return x * x * (3 - 2 * x);
+            }
+            
+            // Vẽ frame hiện tại
+            function draw(timestamp) {
+                if (!animationStartTime) {
+                    animationStartTime = timestamp;
+                }
+                
+                var elapsed = timestamp - animationStartTime;
+                
+                // Xóa canvas
+                ctx.clearRect(0, 0, flagWidth, flagHeight);
+                
+                // Cập nhật và vẽ pixel
+                for (var i = 0; i < pixels.length; i++) {
+                    var pixel = pixels[i];
+                    
+                    // Chắc chắn có context trước khi vẽ
+                    if (!ctx) continue;
+                    
+                    // Tính toán vị trí dựa trên thời gian
+                    var x, y, alpha;
+                    
+                    // Nếu đang trong giai đoạn intro
+                    if (elapsed < introDuration + pixel.delay) {
+                        var t = Math.max(0, elapsed - pixel.delay) / introDuration;
+                        var progress = smoothstep(0, 1, t);
+                        
+                        // Tính toán đường cong Bezier đơn giản
+                        x = pixel.startX + (pixel.x - pixel.startX) * progress;
+                        y = pixel.startY + (pixel.y - pixel.startY) * progress;
+                        
+                        // Tăng độ trong suốt theo thời gian
+                        alpha = progress;
+                    } else {
+                        isIntroCompleted = true;
+                        
+                        // Hiệu ứng sóng lụa liên tục sau khi intro hoàn tất
+                        var time = elapsed / 1000; // Đổi sang giây
+                        var waveFreq = 2; // Tần số sóng
+                        var waveAmp = 5 * pixel.depth; // Biên độ sóng, tăng theo độ sâu
+                        
+                        x = pixel.x;
+                        y = pixel.y + Math.sin(x * 0.01 + time * waveFreq) * waveAmp;
+                        
+                        // Hiệu ứng shimmer
+                        var shimmerAmp = 0.3; // Biên độ shimmer
+                        alpha = 0.7 + Math.sin(time * pixel.shimmerSpeed * 10 + pixel.phase) * shimmerAmp;
+                        alpha = Math.max(0.3, Math.min(1, alpha)); // Giới hạn trong 0.3-1.0
+                    }
+                    
+                    // Áp dụng parallax dựa trên độ sâu
+                    if (isIntroCompleted) {
+                        // Parallax theo chuyển động chuột nếu đã hoàn tất intro
+                        var parallaxOffsetX = (mouseX - windowWidth / 2) * (1 - pixel.depth) * 0.02;
+                        var parallaxOffsetY = (mouseY - windowHeight / 2) * (1 - pixel.depth) * 0.02;
+                        x += parallaxOffsetX;
+                        y += parallaxOffsetY;
+                    }
+                    
+                    // Vẽ pixel với độ trong suốt được tính
+                    var color = pixel.color;
+                    if (color.startsWith('rgba(')) {
+                        // Chỉnh sửa alpha trong chuỗi RGBA
+                        var rgbaParts = color.slice(5, -1).split(',');
+                        rgbaParts[3] = ' ' + alpha;
+                        color = 'rgba(' + rgbaParts.join(',') + ')';
+                    }
+                    
+                    ctx.fillStyle = color;
+                    ctx.fillRect(x, y, pixel.size, pixel.size);
+                }
+                
+                // Tiếp tục loop animation
+                animationFrameId = requestAnimationFrame(draw);
+            }
+            
+            // Biến theo dõi vị trí chuột cho hiệu ứng parallax
+            var mouseX = 0;
+            var mouseY = 0;
+            var windowWidth = window.innerWidth;
+            var windowHeight = window.innerHeight;
+            
+            // Theo dõi vị trí chuột
+            function trackMousePosition(e) {
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+            }
+            
+            // Theo dõi vị trí touch
+            function trackTouchPosition(e) {
+                if (e.touches.length > 0) {
+                    mouseX = e.touches[0].clientX;
+                    mouseY = e.touches[0].clientY;
+                }
+            }
+            
+            // Xử lý resize window
+            function handleResize() {
+                windowWidth = window.innerWidth;
+                windowHeight = window.innerHeight;
+                
+                if (isCanvasSupported && canvas) {
+                    // Điều chỉnh kích thước hiển thị của canvas
+                    var containerWidth = container.clientWidth;
+                    var containerHeight = container.clientHeight;
+                    
+                    var canvasWidth, canvasHeight;
+                    if (containerWidth / containerHeight > flagWidth / flagHeight) {
+                        canvasHeight = Math.min(containerHeight, flagHeight);
+                        canvasWidth = canvasHeight * (flagWidth / flagHeight);
+                    } else {
+                        canvasWidth = Math.min(containerWidth, flagWidth);
+                        canvasHeight = canvasWidth * (flagHeight / flagWidth);
+                    }
+                    
+                    canvas.style.width = canvasWidth + 'px';
+                    canvas.style.height = canvasHeight + 'px';
+                    
+                    // Nếu màn hình đã thay đổi nhiều, điều chỉnh kích thước pixel
+                    var previousPixelSize = pixelSize;
+                    adjustPixelSize();
+                    
+                    if (previousPixelSize !== pixelSize) {
+                        // Cập nhật lại toàn bộ pixel
+                        if (animationFrameId) {
+                            cancelAnimationFrame(animationFrameId);
+                        }
+                        ctx.clearRect(0, 0, flagWidth, flagHeight);
+                        initPixels();
+                        animationStartTime = null;
+                        isIntroCompleted = false;
+                        animationFrameId = requestAnimationFrame(draw);
+                    }
+                }
+            }
+            
+            // Khởi tạo ứng dụng
+            function init() {
+                adjustPixelSize();
+                
+                if (checkCanvasSupport()) {
+                    // Nếu canvas được hỗ trợ
+                    initCanvas();
+                    initPixels();
+                    
+                    // Bắt đầu animation
+                    animationFrameId = requestAnimationFrame(draw);
+                    
+                    // Theo dõi chuột cho hiệu ứng parallax
+                    document.addEventListener('mousemove', trackMousePosition);
+                    document.addEventListener('touchmove', trackTouchPosition);
+                    
+                    // Xử lý resize
+                    window.addEventListener('resize', handleResize);
+                } else {
+                    // Fallback sang SVG nếu không hỗ trợ canvas
+                    createFallbackSVG();
+                }
+            }
+            
+            // Khởi chạy ứng dụng khi trang được tải
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+        })();
+    </script>
+</body>
+</html>
